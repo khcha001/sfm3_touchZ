@@ -1,10 +1,13 @@
 import sys
+import re
 import matplotlib.pyplot as plt
+import matplotlib._path  # Hidden import
+
 import seaborn as sns
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QMessageBox
-import re
-from matplotlib.dates import datestr2num, DateFormatter, MinuteLocator, HourLocator
-import matplotlib.font_manager as font_manager
+import matplotlib.dates as mdates
+from matplotlib import font_manager
+from matplotlib.dates import HourLocator, DateFormatter
 
 
 
@@ -59,6 +62,9 @@ class MyGUI(QMainWindow):
         match = re.match(pattern, log_line)
         if match:
             datetime_str, head, data_type, bl, ar, cad_id, l0, pos_x, pos_y, touch_z = match.groups()
+            # Filter out data with DataType "Pick" and "Flux"
+            if data_type in ["Pick", "Flux"]:
+                return None
             return {
                 "DateTime": datetime_str,
                 "Head": int(head),
@@ -68,7 +74,7 @@ class MyGUI(QMainWindow):
                 "TouchZ": float(touch_z)
             }
         else:
-            return None
+            return None    
 
     def parse_data(self):
         if not self.log_data:
@@ -121,8 +127,8 @@ class MyGUI(QMainWindow):
             data_for_head = [data for data in self.log_data if data["Head"] == head]
             if data_for_head:
                 # Convert datetime_str to datetime object and sort by datetime
-                sorted_data = sorted(data_for_head, key=lambda x: datestr2num(x["DateTime"]))
-                x_values = [datestr2num(data["DateTime"]) for data in sorted_data]
+                sorted_data = sorted(data_for_head, key=lambda x: mdates.datestr2num(x["DateTime"]))
+                x_values = [mdates.datestr2num(data["DateTime"]) for data in sorted_data]
                 y_values = [data["TouchZ"] for data in sorted_data]
                 fig, ax = plt.subplots()
                 ax.xaxis_date()  # Set x-axis to display dates
