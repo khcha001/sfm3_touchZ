@@ -74,25 +74,28 @@ class MyGUI(QMainWindow):
                 return None       
 
     def parse_data(self):
-        if not self.log_data:
-            QMessageBox.warning(self, "경고", "파싱할 로그 데이터가 없습니다.", QMessageBox.Ok)
-            return
+            if not self.log_data:
+                QMessageBox.warning(self, "경고", "파싱할 로그 데이터가 없습니다.", QMessageBox.Ok)
+                return
 
-        QMessageBox.information(self, "파싱 성공", "파싱이 성공적으로 완료되었습니다.", QMessageBox.Ok)
+            QMessageBox.information(self, "파싱 성공", "파싱이 성공적으로 완료되었습니다.", QMessageBox.Ok)
 
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
-        file_name, _ = QFileDialog.getSaveFileName(self, "결과 파일을 어디에 저장하실래요?", "", "텍스트 파일 (*.txt);;모든 파일 (*)", options=options)
+            options = QFileDialog.Options()
+            options |= QFileDialog.DontUseNativeDialog
+            file_name, _ = QFileDialog.getSaveFileName(self, "결과 파일을 어디에 저장하실래요?", "", "텍스트 파일 (*.txt);;모든 파일 (*)", options=options)
 
-        if file_name:
-            with open(file_name, 'w') as file:
-                for data in self.log_data:
-                    file.write(f"DateTime: {data['DateTime']}\t")
-                    file.write(f"Head: {data['Head']}\t")
-                    file.write(f"DataType: {data['DataType']}\t")
-                    file.write(f"PosX: {data['PosX']}\t")
-                    file.write(f"PosY: {data['PosY']}\t")
-                    file.write(f"TouchZ: {data['TouchZ']}\n")
+            if file_name:
+                # Filter log_data to keep only the entries with DataType 'Place'
+                filtered_data = [data for data in self.log_data if data["DataType"] == "Place"]
+
+                with open(file_name, 'w') as file:
+                    for data in filtered_data:
+                        file.write(f"DateTime: {data['DateTime']}\t")
+                        file.write(f"Head: {data['Head']}\t")
+                        file.write(f"DataType: {data['DataType']}\t")
+                        file.write(f"PosX: {data['PosX']}\t")
+                        file.write(f"PosY: {data['PosY']}\t")
+                        file.write(f"TouchZ: {data['TouchZ']}\n")    
 
     def show_graphs(self):
         if not self.log_data:
