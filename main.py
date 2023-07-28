@@ -48,17 +48,29 @@ class MyGUI(QMainWindow):
             for file_name in file_names:
                 with open(file_name, 'r') as file:
                     for line in file:
-                        parsed_data = self.parse_log_data(line)
-                        if parsed_data:
-                            self.log_data.append(parsed_data)
+                        # Use re.search() to find matching pattern in the line
+                        match = re.search(r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+Head:\s+(\d+)\s+([\w\s]+)\s+Bl:(\d+)\s+Ar:(\d+)\s+CadID:(\d+)\s+(\w+)\s+PosX:(-?\d+\.\d+)\s+PosY:(-?\d+\.\d+)\s+TouchZ:(-?\d+\.\d+)', line)
+                        if match:
+                            datetime_str, head, data_type, bl, ar, cad_id, l0, pos_x, pos_y, touch_z = match.groups()
+                            # Check if DataType is "Place"
+                            if data_type.strip() == "Place":  # Strip to remove leading/trailing whitespaces
+                                self.log_data.append({
+                                    "DateTime": datetime_str,
+                                    "Head": int(head),
+                                    "DataType": data_type.strip(),
+                                    "PosX": float(pos_x),
+                                    "PosY": float(pos_y),
+                                    "TouchZ": float(touch_z)
+                                })
 
-            if self.log_data:
-                QMessageBox.information(self, "성공", "파일을 성공적으로 불러왔습니다.", QMessageBox.Ok)
-            else:
-                QMessageBox.warning(self, "경고", "유효한 로그 데이터가 없습니다.", QMessageBox.Ok)
+        if self.log_data:
+            QMessageBox.information(self, "성공", "파일을 성공적으로 불러왔습니다.", QMessageBox.Ok)
+        else:
+            QMessageBox.warning(self, "경고", "유효한 로그 데이터가 없습니다.", QMessageBox.Ok)
 
     def parse_log_data(self, log_line):
-        pattern = r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+Head:\s+(\d+)\s+([\w\s]+)\s+Bl:(\d+)\s+Ar:(\d+)\s+CadID:(\d+)\s+(\w+)\s+PosX:(-?\d+\.\d+)\s+PosY:(-?\d+\.\d+)\s+TouchZ:(-?\d+\.\d+)'
+        pattern = r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+Head:\s+(\d+)\s+([\w\s]+)\s+Bl:\s+(\d+)\s+Ar:\s+(\d+)\s+CadID:\s+(\d+)\s+L0\s+PosX:\s+(-?\d+\.\d+)\s+PosY:\s+(-?\d+\.\d+)\s+TouchZ:\s+(-?\d+\.\d+)\s+Act\(gf\):\s+(-?\d+\.\d+)\s+Target\(gf\):\s+(-?\d+\.\d+)\s+Dbg:\s+(-?\d+\.\d+)\s+([\w\d]+):\s+(-?\d+\.\d+)\s+TouchTime:\s+(\d+)\s+\[(\d+)\]'
+
         match = re.match(pattern, log_line)
         if match:
             datetime_str, head, data_type, bl, ar, cad_id, l0, pos_x, pos_y, touch_z = match.groups()
