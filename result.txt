@@ -1,0 +1,1 @@
+DateTime: 2023/07/27 22:46:24.975	Head: 1	DataType: Place	PosX: 142.957	PosY: 50.907	TouchZ: -12.718
