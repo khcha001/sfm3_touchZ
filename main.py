@@ -46,8 +46,9 @@ class MyGUI(QMainWindow):
         if file_names:
             self.log_data = []  # 기존 로그 데이터를 비웁니다.
             for file_name in file_names:
-                with open(file_name, 'r') as file:
+                with open(file_name, 'rb') as file:
                     for line in file:
+                        line = line.decode('utf-8').rstrip('\r\n')  # Decode bytes to str and remove CRLF
                         # Use re.search() to find matching pattern in the line
                         match = re.search(r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+Head:\s+(\d+)\s+([\w\s]+)\s+Bl:(\d+)\s+Ar:(\d+)\s+CadID:(\d+)\s+(\w+)\s+PosX:(-?\d+\.\d+)\s+PosY:(-?\d+\.\d+)\s+TouchZ:(-?\d+\.\d+)', line)
                         if match:
@@ -67,6 +68,7 @@ class MyGUI(QMainWindow):
             QMessageBox.information(self, "성공", "파일을 성공적으로 불러왔습니다.", QMessageBox.Ok)
         else:
             QMessageBox.warning(self, "경고", "유효한 로그 데이터가 없습니다.", QMessageBox.Ok)
+
 
     def parse_log_data(self, log_line):
         pattern = r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+Head:\s+(\d+)\s+([\w\s]+)\s+Bl:(\d+)\s+Ar:(\d+)\s+CadID:(\d+)\s+(\w+)\s+PosX:(-?\d+\.\d+)\s+PosY:(-?\d+\.\d+)\s+TouchZ:\s*(-?\d+\.\d+)\s+100\s+Act\(gf\):\s*(-?\d+\.\d+)\s+Target\(gf\):\s*(-?\d+\.\d+)\s+Dbg:\s*(-?\d+\.\d+)\s+(\w+\d+\.\d+)\s+TouchTime:\s+(\d+)\s+\[(\d+)\]'
