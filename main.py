@@ -1,186 +1,172 @@
 import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QMessageBox
+import pandas as pd
 import re
 import matplotlib.pyplot as plt
-import matplotlib._path  # Hidden import
-
-import seaborn as sns
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QMessageBox
-import matplotlib.dates as mdates
-from matplotlib import font_manager
-from matplotlib.dates import HourLocator, DateFormatter
 
 
-
-class MyGUI(QMainWindow):
+class TouchZParserApp(QWidget):
     def __init__(self):
         super().__init__()
+        self.initUI()
 
-        self.init_ui()
-
-    def init_ui(self):
-        self.setWindowTitle("sfm3 터치 Z 파싱")
+    def initUI(self):
+        self.setWindowTitle('Touch Z 파서')
         self.setGeometry(100, 100, 320, 240)
+        self.setFixedSize(320, 240)  # 창 크기를 고정
 
-        btn_load = QPushButton("로그 불러오기", self)
-        btn_load.setGeometry(60, 30, 200, 50)
-        btn_load.clicked.connect(self.load_files)
+        layout = QVBoxLayout(self)
 
-        btn_parse = QPushButton("파싱하기", self)
-        btn_parse.setGeometry(60, 90, 200, 50)
-        btn_parse.clicked.connect(self.parse_data)
+        self.btn_load_logs = QPushButton('(1) 로그불러오기', self)
+        self.btn_load_logs.clicked.connect(self.load_logs)
+        layout.addWidget(self.btn_load_logs)
 
-        btn_show_graphs = QPushButton("그래프 보여주기", self)
-        btn_show_graphs.setGeometry(60, 150, 200, 50)
-        btn_show_graphs.clicked.connect(self.show_graphs)
+        self.btn_parse = QPushButton('(2) 파싱하기', self)
+        self.btn_parse.clicked.connect(self.parse_logs)
+        layout.addWidget(self.btn_parse)
 
-        # 창 크기를 고정합니다.
-        self.setFixedSize(self.size())
+        self.btn_plot = QPushButton('(3) 그래프로 나타내기', self)
+        self.btn_plot.clicked.connect(self.plot_graph)
+        layout.addWidget(self.btn_plot)
 
-        self.log_data = []
+        self.btn_exit = QPushButton('(4) 종료', self)
+        self.btn_exit.clicked.connect(self.close)
+        layout.addWidget(self.btn_exit)
 
-    def load_files(self):
+        self.log_entries = []  # 불러온 로그들을 저장할 리스트를 생성합니다.
+
+    def load_logs(self):
         options = QFileDialog.Options()
         options |= QFileDialog.ReadOnly
-        file_names, _ = QFileDialog.getOpenFileNames(self, "로그 파일 불러오기", "", "로그 파일 (*.log);;모든 파일 (*)", options=options)
+        file_paths, _ = QFileDialog.getOpenFileNames(self, "로그 파일 불러오기", "", "로그 파일 (*.log);;모든 파일 (*)", options=options)
+        if file_paths:
+            self.log_entries.clear()  # 이전에 불러온 로그들을 비웁니다.
+            for file_path in file_paths:
+                with open(file_path, 'r') as file:
+                    log_data = file.read()
 
-        if file_names:
-            self.log_data = []  # 기존 로그 데이터를 비웁니다.
-            for file_name in file_names:
-                try:
-                    with open(file_name, 'r') as file:
-                        line_number = 0
-                        for line in file:
-                            line_number += 1
-                            # Remove the part after "TouchZ" and before the newline character
-                            line = line.split("TouchZ")[0]
-                            # Use re.search() to find matching pattern in the line
-                            match = re.search(r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+Head:\s+(\d+)\s+([\w\s]+)\s+Bl:(\d+)\s+Ar:(\d+)\s+CadID:(\d+)\s+(\w+)\s+PosX:(-?\d+\.\d+)\s+PosY:(-?\d+\.\d+)\s+TouchZ:(-?\d+\.\d+)', line)
-                            if match:
-                                datetime_str, head, data_type, bl, ar, cad_id, l0, pos_x, pos_y, touch_z = match.groups()
-                                # Check if DataType is "Place"
-                                if data_type.strip() == "Place":  # Strip to remove leading/trailing whitespaces
-                                    self.log_data.append({
-                                        "DateTime": datetime_str,
-                                        "Head": int(head),
-                                        "DataType": data_type.strip(),
-                                        "PosX": float(pos_x),
-                                        "PosY": float(pos_y),
-                                        "TouchZ": float(touch_z)
-                                    })
-                except Exception as e:
-                    QMessageBox.warning(self, "에러", f"파일을 불러오는 중에 오류가 발생하였습니다: {str(e)} (File: {file_name}, Line: {line_number})", QMessageBox.Ok)
+                    # 각 로그 라인을 줄바꿈을 기준으로 분리하여 파싱합니다.
+                    log_lines = log_data.split('\n')
+                    for log_line in log_lines:
+                        log_info = self.parse_log_line(log_line)
+                        if log_info:
+                            self.log_entries.append(log_info)
 
-        if self.log_data:
-            QMessageBox.information(self, "성공", "파일을 성공적으로 불러왔습니다.", QMessageBox.Ok)
-        else:
-            QMessageBox.warning(self, "경고", "유효한 로그 데이터가 없습니다.", QMessageBox.Ok)
+            # 여러 .log 파일을 불러온 후에 메시지를 표시합니다.
+            QMessageBox.information(self, "성공", "로그파일을 정상적으로 불러왔습니다.", QMessageBox.Ok)
 
+    def parse_log_line(self, log_line):
+        # 로그 라인을 파싱하는 로직을 작성합니다.
+        log_info = {}
+        try:
+            if log_line:
+                # 로그 라인을 파싱하는 로직을 작성합니다.
+                time_end_idx = log_line.index('Head:')
+                # Time의 값을 추출합니다. 초(sec)는 소수점 없이 표시합니다.
+                time_value = log_line[:time_end_idx].strip()
+                time_value = re.sub(r'\.\d+', '', time_value)  # 초(sec) 부분의 소수점을 없애기 위해 정규식을 사용합니다.
+                log_info['Time'] = time_value
 
-        
+                head_start_idx = time_end_idx + len('Head:')
+                head_end_idx = log_line.index('Place', head_start_idx)  # Head와 Place 사이의 값을 추출합니다.
+                log_info['Head'] = log_line[head_start_idx:head_end_idx].strip()
 
-    def parse_log_data(self, log_line):
-        pattern = r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+Head:\s+(\d+)\s+([\w\s]+)\s+Bl:(\d+)\s+Ar:(\d+)\s+CadID:(\d+)\s+(\w+)\s+PosX:(-?\d+\.\d+)\s+PosY:(-?\d+\.\d+)\s+TouchZ:\s*(-?\d+\.\d+)\s+100\s+Act\(gf\):\s*(-?\d+\.\d+)\s+Target\(gf\):\s*(-?\d+\.\d+)\s+Dbg:\s*(-?\d+\.\d+)\s+(\w+\d+\.\d+)\s+TouchTime:\s+(\d+)\s+\[(\d+)\]'
-        match = re.match(pattern, log_line)
-        if match:
-            datetime_str, head, data_type, bl, ar, cad_id, l0, pos_x, pos_y, touch_z, act_gf, target_gf, dbg, c_value, touch_time1, touch_time2 = match.groups()
-            # Check if DataType is "Place"
-            if data_type.strip() in ("Place", "Place\n"):  # Strip to remove leading/trailing whitespaces
-                return {
-                    "DateTime": datetime_str,
-                    "Head": int(head),
-                    "DataType": data_type.strip(),
-                    "PosX": float(pos_x),
-                    "PosY": float(pos_y),
-                    "TouchZ": float(touch_z),
-                    "Act(gf)": float(act_gf),
-                    "Target(gf)": float(target_gf),
-                    "Dbg": float(dbg),
-                    "CValue": c_value,
-                    "TouchTime1": int(touch_time1),
-                    "TouchTime2": int(touch_time2)
-                }
-        return None  
+                # Place, Flux, Pick 중 어느 것인지 구분값을 추출합니다.
+                log_info['구분'] = log_line[head_end_idx:head_end_idx+5].strip()
 
-    def parse_data(self):
-            if not self.log_data:
-                QMessageBox.warning(self, "경고", "파싱할 로그 데이터가 없습니다.", QMessageBox.Ok)
-                return
+                posx_start_idx = log_line.index('PosX:', head_end_idx) + len('PosX:')
+                posx_end_idx = log_line.index('PosY:', posx_start_idx)  # PosX와 PosY 사이의 값을 추출합니다.
+                log_info['PosX'] = log_line[posx_start_idx:posx_end_idx].strip()
 
-            QMessageBox.information(self, "파싱 성공", "파싱이 성공적으로 완료되었습니다.", QMessageBox.Ok)
+                posy_start_idx = posx_end_idx + len('PosY:')
+                posy_end_idx = log_line.index('TouchZ:', posy_start_idx)  # PosY와 TouchZ 사이의 값을 추출합니다.
+                log_info['PosY'] = log_line[posy_start_idx:posy_end_idx].strip()
 
-            options = QFileDialog.Options()
-            options |= QFileDialog.DontUseNativeDialog
-            file_name, _ = QFileDialog.getSaveFileName(self, "결과 파일을 어디에 저장하실래요?", "", "텍스트 파일 (*.txt);;모든 파일 (*)", options=options)
+                touchz_start_idx = posy_end_idx + len('TouchZ:')
+                # Touch Z의 값을 추출합니다. 소수 넷째 자리까지 포함하는 float 값입니다.
+                touch_z_value = re.search(r'\d+\.\d{4}', log_line[touchz_start_idx:])
+                if touch_z_value:
+                    log_info['Touch Z'] = float(touch_z_value.group())
+        except ValueError:
+            # 파싱 중 에러가 발생한 경우 무시합니다.
+            pass
 
-            if file_name:
-                # Filter log_data to keep only the entries with DataType 'Place'
-                filtered_data = [data for data in self.log_data if data["DataType"] == "Place"]
+        return log_info
 
-                with open(file_name, 'w') as file:
-                    for data in filtered_data:
-                        file.write(f"DateTime: {data['DateTime']}\t")
-                        file.write(f"Head: {data['Head']}\t")
-                        file.write(f"DataType: {data['DataType']}\t")
-                        file.write(f"PosX: {data['PosX']}\t")
-                        file.write(f"PosY: {data['PosY']}\t")
-                        file.write(f"TouchZ: {data['TouchZ']}\n")    
-
-    def show_graphs(self):
-        if not self.log_data:
-            QMessageBox.warning(self, "경고", "그래프를 보여줄 데이터가 없습니다.", QMessageBox.Ok)
+    def save_to_excel(self, df):
+        if df.empty:
+            QMessageBox.warning(self, "경고", "파싱할 로그가 없습니다.", QMessageBox.Ok)
             return
 
-        sns.set(style="whitegrid")
-        heads = set(data["Head"] for data in self.log_data)
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        file_path, _ = QFileDialog.getSaveFileName(self, "파싱 결과 저장", "", "Excel Files (*.xlsx)", options=options)
 
-            # Set the font for Korean characters in matplotlib
-        font_path = "C:/Windows/Fonts/malgun.ttf"  # Change this path if needed
-        font_manager.FontProperties(fname=font_path).get_name()
-        plt.rcParams["font.family"] = font_manager.FontProperties(fname=font_path).get_name()
-
-        sns.set(style="whitegrid")
-        heads = set(data["Head"] for data in self.log_data)
-
-        def on_pick(event):
-            ind = event.ind[0]
-            data = sorted_data[ind]
-            datetime_str = data["DateTime"]
-            head = data["Head"]
-            touch_z = data["TouchZ"]
-            data_type = data["DataType"]
-            tooltip_text = f"DateTime: {datetime_str}\nHead: {head}\nTouchZ: {touch_z:.4f}\nDataType: {data_type}"
-            self.tooltip.set_text(tooltip_text)
-
-        for head in heads:
-            data_for_head = [data for data in self.log_data if data["Head"] == head]
-            if data_for_head:
-                # Convert datetime_str to datetime object and sort by datetime
-                sorted_data = sorted(data_for_head, key=lambda x: mdates.datestr2num(x["DateTime"]))
-                x_values = [mdates.datestr2num(data["DateTime"]) for data in sorted_data]
-                y_values = [data["TouchZ"] for data in sorted_data]
-                fig, ax = plt.subplots()
-                ax.xaxis_date()  # Set x-axis to display dates
-                ax.xaxis.set_major_locator(HourLocator(interval=6))  # Set interval to display 6 hours
-                ax.xaxis.set_major_formatter(DateFormatter("%H:%M"))  # Format for x-axis
-                plt.xticks(rotation=45)
-                sns.scatterplot(x=x_values, y=y_values, ax=ax)
-                plt.title(f"Head: {head}의 분산형 그래프")
-                plt.tight_layout()
-
-                # Create a tooltip for displaying data on hover
-                self.tooltip = ax.annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
-                                        bbox=dict(boxstyle="round", fc="w"),
-                                        arrowprops=dict(arrowstyle="->"))
-                self.tooltip.set_visible(False)
-
-                # Connect the pick event to the on_pick function
-                fig.canvas.mpl_connect('pick_event', on_pick)
-
-                plt.show()
+        if file_path:
+            try:
+                # DataFrame을 Excel 파일로 저장합니다.
+                df.to_excel(file_path, index=False)
+                QMessageBox.information(self, "성공", "파싱 결과를 저장했습니다.", QMessageBox.Ok)
+            except Exception as e:
+                QMessageBox.critical(self, "에러", f"파일 저장 중 오류가 발생했습니다: {str(e)}", QMessageBox.Ok)
 
 
-if __name__ == "__main__":
+    def parse_logs(self):
+        if not self.log_entries:
+            QMessageBox.warning(self, "경고", "파싱할 로그가 없습니다. 먼저 로그를 불러와주세요.", QMessageBox.Ok)
+            return
+
+        # 파싱 결과를 pandas DataFrame으로 변환합니다.
+        df = pd.DataFrame(self.log_entries)
+
+        # Time 열에만 값이 있는 행들을 삭제합니다.
+        df = df.dropna(subset=['Time'])
+
+        # '구분' 열에 'Place'만 있는 행들을 남기고 나머지를 삭제합니다.
+        df = df[df['구분'] == 'Place']
+
+        # DataFrame을 Excel 파일로 저장합니다.
+        self.save_to_excel(df)
+
+    def plot_graph(self):
+        if not self.log_entries:
+            QMessageBox.warning(self, "경고", "데이터가 없습니다. 먼저 로그를 불러와주세요.", QMessageBox.Ok)
+            return
+
+        # 파싱 결과를 pandas DataFrame으로 변환합니다.
+        df = pd.DataFrame(self.log_entries)
+
+        # Time 열에만 값이 있는 행들을 삭제합니다.
+        df = df.dropna(subset=['Time'])
+
+        # '구분' 열에 'Place'만 있는 행들을 남기고 나머지를 삭제합니다.
+        df = df[df['구분'] == 'Place']
+
+        # Time 값을 datetime 형식으로 변환합니다.
+        df['Time'] = pd.to_datetime(df['Time'], format='%Y/%m/%d %H:%M:%S')
+
+        # 6시간 단위로 데이터를 그룹화합니다.
+        df['Time'] = df['Time'].dt.floor('6H')
+
+        # 그래프를 그리기 위해 Head를 숫자형으로 변환합니다.
+        df['Head'] = df['Head'].astype(int)
+
+        # 각 Head별로 분산형 그래프를 그립니다.
+        colors = {1: 'red', 2: 'orange', 3: 'blue', 4: 'green'}
+        for head, group in df.groupby('Head'):
+            plt.scatter(group['Time'], group['Touch Z'], label=f'Head {head}', color=colors[head])
+
+        plt.xlabel('Time')
+        plt.ylabel('Touch Z')
+        plt.title('Touch Z by Head')
+        plt.legend()
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+
+if __name__ == '__main__':
     app = QApplication(sys.argv)
-    my_gui = MyGUI()
-    my_gui.show()
+    window = TouchZParserApp()
+    window.show()
     sys.exit(app.exec_())
+
