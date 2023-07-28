@@ -58,10 +58,12 @@ class MyGUI(QMainWindow):
                 QMessageBox.warning(self, "경고", "유효한 로그 데이터가 없습니다.", QMessageBox.Ok)
 
     def parse_log_data(self, log_line):
-            pattern = r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+Head:\s+(\d+)\s+(\w+)\s+Bl:(\d+)\s+Ar:(\d+)\s+CadID:(\d+)\s+(\w+)\s+PosX:(-?\d+\.\d+)\s+PosY:(-?\d+\.\d+)\s+TouchZ:(-?\d+\.\d+)'
-            match = re.match(pattern, log_line)
-            if match:
-                datetime_str, head, data_type, bl, ar, cad_id, l0, pos_x, pos_y, touch_z = match.groups()
+        pattern = r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+Head:\s+(\d+)\s+(\w+)\s+Bl:(\d+)\s+Ar:(\d+)\s+CadID:(\d+)\s+(\w+)\s+PosX:(-?\d+\.\d+)\s+PosY:(-?\d+\.\d+)\s+TouchZ:(-?\d+\.\d+)'
+        match = re.match(pattern, log_line)
+        if match:
+            datetime_str, head, data_type, bl, ar, cad_id, l0, pos_x, pos_y, touch_z = match.groups()
+            # Check if DataType is "Place"
+            if data_type == "Place":
                 return {
                     "DateTime": datetime_str,
                     "Head": int(head),
@@ -70,8 +72,7 @@ class MyGUI(QMainWindow):
                     "PosY": float(pos_y),
                     "TouchZ": float(touch_z)
                 }
-            else:
-                return None       
+        return None       
 
     def parse_data(self):
             if not self.log_data:
