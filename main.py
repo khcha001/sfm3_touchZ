@@ -46,23 +46,28 @@ class MyGUI(QMainWindow):
         if file_names:
             self.log_data = []  # 기존 로그 데이터를 비웁니다.
             for file_name in file_names:
-                with open(file_name, 'rb') as file:
-                    for line in file:
-                        line = line.decode('utf-8').rstrip('\r\n')  # Decode bytes to str and remove CRLF
-                        # Use re.search() to find matching pattern in the line
-                        match = re.search(r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+Head:\s+(\d+)\s+([\w\s]+)\s+Bl:(\d+)\s+Ar:(\d+)\s+CadID:(\d+)\s+(\w+)\s+PosX:(-?\d+\.\d+)\s+PosY:(-?\d+\.\d+)\s+TouchZ:(-?\d+\.\d+)', line)
-                        if match:
-                            datetime_str, head, data_type, bl, ar, cad_id, l0, pos_x, pos_y, touch_z = match.groups()
-                            # Check if DataType is "Place"
-                            if data_type.strip() == "Place":  # Strip to remove leading/trailing whitespaces
-                                self.log_data.append({
-                                    "DateTime": datetime_str,
-                                    "Head": int(head),
-                                    "DataType": data_type.strip(),
-                                    "PosX": float(pos_x),
-                                    "PosY": float(pos_y),
-                                    "TouchZ": float(touch_z)
-                                })
+                with open(file_name, 'r') as file:
+                    try:
+                        line_number = 0  # 줄 번호를 추적합니다.
+                        for line in file:
+                            line_number += 1
+                            # Use re.search() to find matching pattern in the line
+                            match = re.search(r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+Head:\s+(\d+)\s+([\w\s]+)\s+Bl:(\d+)\s+Ar:(\d+)\s+CadID:(\d+)\s+(\w+)\s+PosX:(-?\d+\.\d+)\s+PosY:(-?\d+\.\d+)\s+TouchZ:(-?\d+\.\d+)', line)
+                            if match:
+                                datetime_str, head, data_type, bl, ar, cad_id, l0, pos_x, pos_y, touch_z = match.groups()
+                                # Check if DataType is "Place"
+                                if data_type.strip() == "Place":  # Strip to remove leading/trailing whitespaces
+                                    self.log_data.append({
+                                        "DateTime": datetime_str,
+                                        "Head": int(head),
+                                        "DataType": data_type.strip(),
+                                        "PosX": float(pos_x),
+                                        "PosY": float(pos_y),
+                                        "TouchZ": float(touch_z)
+                                    })
+                    except Exception as e:
+                        QMessageBox.warning(self, "파일 로드 에러", f"파일 로드 중 오류가 발생했습니다.\n파일: {file_name}\n줄 번호: {line_number}\n에러 메시지: {str(e)}", QMessageBox.Ok)
+                        return
 
         if self.log_data:
             QMessageBox.information(self, "성공", "파일을 성공적으로 불러왔습니다.", QMessageBox.Ok)
