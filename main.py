@@ -48,9 +48,11 @@ class MyGUI(QMainWindow):
             for file_name in file_names:
                 try:
                     with open(file_name, 'r') as file:
-                        line_number = 0  # 줄 번호를 추적합니다.
+                        line_number = 0
                         for line in file:
                             line_number += 1
+                            # Remove the part after "TouchZ" and before the newline character
+                            line = line.split("TouchZ")[0]
                             # Use re.search() to find matching pattern in the line
                             match = re.search(r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+Head:\s+(\d+)\s+([\w\s]+)\s+Bl:(\d+)\s+Ar:(\d+)\s+CadID:(\d+)\s+(\w+)\s+PosX:(-?\d+\.\d+)\s+PosY:(-?\d+\.\d+)\s+TouchZ:(-?\d+\.\d+)', line)
                             if match:
@@ -66,8 +68,7 @@ class MyGUI(QMainWindow):
                                         "TouchZ": float(touch_z)
                                     })
                 except Exception as e:
-                    QMessageBox.warning(self, "파일 로드 에러", f"파일 로드 중 오류가 발생했습니다.\n파일: {file_name}\n줄 번호: {line_number}\n에러 메시지: {str(e)}", QMessageBox.Ok)
-                    return
+                    QMessageBox.warning(self, "에러", f"파일을 불러오는 중에 오류가 발생하였습니다: {str(e)} (File: {file_name}, Line: {line_number})", QMessageBox.Ok)
 
         if self.log_data:
             QMessageBox.information(self, "성공", "파일을 성공적으로 불러왔습니다.", QMessageBox.Ok)
